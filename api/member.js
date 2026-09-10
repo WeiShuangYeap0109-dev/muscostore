@@ -16,7 +16,15 @@ export default async function handler(req,res){
       const email=String(body.email||'').trim().toLowerCase(), phone=String(body.phone||'').trim();
       if(!email&&!phone) return out(res,400,{error:'手机或邮箱至少填一个'});
       if(data.members.some(m=>(email&&String(m.email||'').toLowerCase()===email)||(phone&&String(m.phone||'')===phone))) return out(res,409,{error:'账号已存在'});
-      const m={id:'m'+Date.now(),name:String(body.name||'').trim(),phone,email,password:String(body.password||''),credit:0};
+      const m={
+  id:'m'+Date.now(),
+  name:String(body.name||'').trim(),
+  phone,
+  email,
+  password:String(body.password||''),
+  address:String(body.address||'').trim(),
+  credit:0
+};
       data.members.push(m);
       await sql`INSERT INTO musco_store (id,data) VALUES ('main',${JSON.stringify(data)}::jsonb) ON CONFLICT(id) DO UPDATE SET data=EXCLUDED.data`;
       const {password,...safe}=m; return out(res,200,{member:safe});
