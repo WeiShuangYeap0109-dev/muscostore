@@ -39,7 +39,7 @@ function App(){
   const {data,save}=useStore();
   const [cart,setCart]=useState([]); const [showCart,setShowCart]=useState(false); const [showMemberModal,setShowMemberModal]=useState(false);
   const [showAdminLogin,setShowAdminLogin]=useState(false); const [showAdminPanel,setShowAdminPanel]=useState(false); const [adminTab,setAdminTab]=useState('products');
-  const [memberForm,setMemberForm]=useState({mode:'login',name:'',phone:'',email:'',password:'',credit:0,error:''});
+  const [memberForm,setMemberForm]=useState({mode:'login',name:'',phone:'',password:''，error:''});if(!memberForm.phone &&!memberForm.email){setMemberForm({...memberForm,error:'手机或邮箱至少填一个'}); return;}
   const [currentMember,setCurrentMember]=useState(()=>{try{const m=localStorage.getItem('musco_current_member'); return m?JSON.parse(m):null;}catch{return null;}});
   const [adminCred,setAdminCred]=useState({u:'',p:''}); const [isAdmin,setIsAdmin]=useState(false);
   const [editingProduct,setEditingProduct]=useState(null); const [newProduct,setNewProduct]=useState({id:'',productId:'',name:'',photo:'',regularPrice:0,memberPrice:0,stock:0,description:'',visible:true});
