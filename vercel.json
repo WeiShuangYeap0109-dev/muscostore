@@ -1,8 +1,13 @@
 {
   "functions": {
-    "api/store.js": { "includeFiles": "api/**" }
-  },
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+    "api/store.js": {
+      "includeFiles": "api/**"
+    },
+    "api/member.js": {
+      "includeFiles": "api/**"
+    },
+    "api/admin.js": {
+      "includeFiles": "api/**"
+    }
+  }
 }
