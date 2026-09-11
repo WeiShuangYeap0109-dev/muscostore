@@ -56,11 +56,9 @@ function detectCreditProduct(product) {
   if (amount === 388 || text.includes("388")) {
     return { creditAmount: 388, validityMonths: 12 };
   }
-
   if (amount === 688 || text.includes("688")) {
     return { creditAmount: 688, validityMonths: 24 };
   }
-
   if (text.includes("credit")) {
     return {
       creditAmount: Number.isFinite(amount) && amount > 0 ? amount : 0,
@@ -69,12 +67,11 @@ function detectCreditProduct(product) {
       ),
     };
   }
-
   return null;
 }
 
 function getCreditLots(member) {
-  const lots = Array.isArray(member.creditLots) ? member.creditLots : [];
+  const lots = Array.isArray(member?.creditLots) ? member.creditLots : [];
   return lots
     .map((lot) => ({
       id: String(
@@ -91,10 +88,40 @@ function getCreditLots(member) {
     .filter((lot) => lot.balance > 0 || lot.originalAmount > 0);
 }
 
+function ensureLegacyCreditLot(member) {
+  const lots = getCreditLots(member);
+  if (!lots.length && Number(member?.credit || 0) > 0) {
+    const amount = Number(member.credit);
+    lots.push({
+      id: `PREVIOUS-${member.id}`,
+      productId: "",
+      productName: "Previous Credit Balance",
+      originalAmount: amount,
+      balance: amount,
+      purchaseDate: null,
+      expiry: null,
+      invoiceNo: "",
+    });
+    member.creditLots = lots;
+  }
+  return lots;
+}
+
 function totalCreditBalance(member) {
-  return getCreditLots(member)
-    .filter((lot) => !lot.expiry || lot.expiry >= formatDateOnly(new Date()))
+  const lots = getCreditLots(member);
+  if (!lots.length) return Math.max(0, Number(member?.credit || 0));
+  const today = formatDateOnly(new Date());
+  return lots
+    .filter((lot) => !lot.expiry || lot.expiry >= today)
     .reduce((sum, lot) => sum + Math.max(0, Number(lot.balance || 0)), 0);
+}
+
+async function save(sql, data) {
+  await sql`
+    INSERT INTO musco_store (id, data)
+    VALUES ('main', ${JSON.stringify(data)}::jsonb)
+    ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
+  `;
 }
 
 export default async function handler(req, res) {
@@ -106,12 +133,8 @@ export default async function handler(req, res) {
     }
 
     const sql = neon(process.env.DATABASE_URL);
-
     const rows = await sql`
-      SELECT data
-      FROM musco_store
-      WHERE id = 'main'
-      LIMIT 1
+      SELECT data FROM musco_store WHERE id = 'main' LIMIT 1
     `;
 
     const data = rows[0]?.data || {
@@ -130,10 +153,7 @@ export default async function handler(req, res) {
       const members = data.members.map((m) => {
         const safe = safeMember(m);
         safe.credit = totalCreditBalance(m);
-        safe.creditLots = getCreditLots(m).map((lot) => ({
-          ...lot,
-          balance: Number(lot.balance || 0),
-        }));
+        safe.creditLots = getCreditLots(m);
         return safe;
       });
 
@@ -156,7 +176,6 @@ export default async function handler(req, res) {
           }
         }
       }
-
       return json(res, 200, { members, credits });
     }
 
@@ -182,11 +201,8 @@ export default async function handler(req, res) {
       );
 
       if (!member) {
-        return json(res, 404, {
-          error: "电话号码不存在，请先 Create Account",
-        });
+        return json(res, 404, { error: "电话号码不存在，请先 Create Account" });
       }
-
       if (String(member.password || "") !== password) {
         return json(res, 401, { error: "Password 错误" });
       }
@@ -225,7 +241,6 @@ export default async function handler(req, res) {
       }
 
       const existing = data.members.find((x) => x.id === id);
-
       const member = {
         ...(existing || {}),
         id,
@@ -240,23 +255,15 @@ export default async function handler(req, res) {
         creditLots: getCreditLots(existing || m),
       };
 
-      if (existing) {
-        data.members = data.members.map((x) => (x.id === id ? member : x));
-      } else {
-        data.members.push(member);
-      }
+      data.members = existing
+        ? data.members.map((x) => (x.id === id ? member : x))
+        : [...data.members, member];
 
-      await sql`
-        INSERT INTO musco_store (id, data)
-        VALUES ('main', ${JSON.stringify(data)}::jsonb)
-        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
-      `;
-
+      await save(sql, data);
       return json(res, 200, safeMember(member));
     }
 
-    /* CREDIT ACTIONS addCredit: Creates a separate credit lot for a purchased credit product. Expiry is calculated from invoiceDate, not the server date. useCredit: Deducts from the earliest-expiring active credit lots first. */
-
+    // Create a new credit lot. Explicit expiry from Admin ADD CREDIT is respected.
     if (body.action === "addCredit") {
       const c = body.credit || {};
       const memberId = String(c.memberId || "").trim();
@@ -268,7 +275,6 @@ export default async function handler(req, res) {
 
       const product = c.product || {};
       const detected = detectCreditProduct(product);
-
       const creditAmount = Number(c.amount ?? detected?.creditAmount ?? 0);
 
       if (!Number.isFinite(creditAmount) || creditAmount <= 0) {
@@ -284,8 +290,13 @@ export default async function handler(req, res) {
         c.validityMonths ?? detected?.validityMonths ?? 12
       );
 
-      const expiryDate = addMonths(parseDate(purchaseDate), validityMonths);
-      expiryDate.setDate(expiryDate.getDate() - 1);
+      let expiry = c.expiry ? String(c.expiry).slice(0, 10) : null;
+
+      if (!expiry) {
+        const expiryDate = addMonths(parseDate(purchaseDate), validityMonths);
+        expiryDate.setDate(expiryDate.getDate() - 1);
+        expiry = formatDateOnly(expiryDate);
+      }
 
       const lot = {
         id: String(c.id || `CREDIT-${memberId}-${Date.now()}`),
@@ -296,20 +307,58 @@ export default async function handler(req, res) {
         originalAmount: creditAmount,
         balance: creditAmount,
         purchaseDate,
-        expiry: formatDateOnly(expiryDate),
+        expiry,
         invoiceNo: String(c.invoiceNo || ""),
       };
 
-      const lots = getCreditLots(member);
+      const lots = ensureLegacyCreditLot(member);
       lots.push(lot);
       member.creditLots = lots;
       member.credit = totalCreditBalance(member);
 
-      await sql`
-        INSERT INTO musco_store (id, data)
-        VALUES ('main', ${JSON.stringify(data)}::jsonb)
-        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
-      `;
+      await save(sql, data);
+
+      return json(res, 200, {
+        ok: true,
+        lot,
+        credit: member.credit,
+        member: safeMember(member),
+      });
+    }
+
+    // Recalculate/update expiry when an invoice date is edited.
+    if (body.action === "update_credit_expiry") {
+      const c = body.credit || {};
+      const memberId = String(c.memberId || "").trim();
+      const member = data.members.find((x) => x.id === memberId);
+
+      if (!member) {
+        return json(res, 404, { error: "Member not found in cloud store" });
+      }
+
+      const invoiceNo = String(c.invoiceNo || "").trim();
+      const expiry = String(c.expiry || "").slice(0, 10);
+
+      if (!invoiceNo || !parseDate(expiry)) {
+        return json(res, 400, {
+          error: "Invoice No and valid expiry are required",
+        });
+      }
+
+      const lots = getCreditLots(member);
+      const lot = lots.find((x) => x.invoiceNo === invoiceNo);
+
+      if (!lot) {
+        return json(res, 404, {
+          error: "Credit lot not found for invoice",
+        });
+      }
+
+      lot.expiry = expiry;
+      member.creditLots = lots;
+      member.credit = totalCreditBalance(member);
+
+      await save(sql, data);
 
       return json(res, 200, {
         ok: true,
@@ -335,14 +384,12 @@ export default async function handler(req, res) {
       }
 
       const today = formatDateOnly(new Date());
-      const lots = getCreditLots(member)
+      const lots = ensureLegacyCreditLot(member)
         .filter((lot) => Number(lot.balance || 0) > 0)
         .filter((lot) => !lot.expiry || lot.expiry >= today)
-        .sort((a, b) => {
-          const ad = a.expiry || "9999-12-31";
-          const bd = b.expiry || "9999-12-31";
-          return ad.localeCompare(bd);
-        });
+        .sort((a, b) =>
+          (a.expiry || "9999-12-31").localeCompare(b.expiry || "9999-12-31")
+        );
 
       let remaining = requestedAmount;
       const deductions = [];
@@ -374,14 +421,10 @@ export default async function handler(req, res) {
         });
       }
 
-      member.creditLots = getCreditLots(member);
+      member.creditLots = lots;
       member.credit = totalCreditBalance(member);
 
-      await sql`
-        INSERT INTO musco_store (id, data)
-        VALUES ('main', ${JSON.stringify(data)}::jsonb)
-        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
-      `;
+      await save(sql, data);
 
       return json(res, 200, {
         ok: true,
@@ -392,7 +435,7 @@ export default async function handler(req, res) {
       });
     }
 
-    /* Backward-compatible credit action. Keeps the old simple balance API working. */
+    // Backward-compatible manual credit action.
     if (body.action === "credit") {
       const c = body.credit || {};
       const memberId = String(c.memberId || "").trim();
@@ -418,9 +461,8 @@ export default async function handler(req, res) {
         });
       }
 
-      /* Legacy positive credit additions become a non-expiring lot. New purchases should use addCredit so expiry is recorded. */
       if (amount > 0) {
-        const lots = getCreditLots(m);
+        const lots = ensureLegacyCreditLot(m);
         lots.push({
           id: `LEGACY-${memberId}-${Date.now()}`,
           productId: "",
@@ -434,14 +476,17 @@ export default async function handler(req, res) {
         m.creditLots = lots;
       } else {
         let remaining = Math.abs(amount);
-        const lots = getCreditLots(m).sort((a, b) =>
+        const lots = ensureLegacyCreditLot(m).sort((a, b) =>
           (a.expiry || "9999-12-31").localeCompare(b.expiry || "9999-12-31")
         );
 
         for (const lot of lots) {
           if (remaining <= 0) break;
-          const used = Math.min(Number(lot.balance || 0), remaining);
-          lot.balance = Number((Number(lot.balance || 0) - used).toFixed(2));
+
+          const before = Number(lot.balance || 0);
+          const used = Math.min(before, remaining);
+
+          lot.balance = Number((before - used).toFixed(2));
           remaining = Number((remaining - used).toFixed(2));
         }
 
@@ -457,12 +502,7 @@ export default async function handler(req, res) {
       }
 
       m.credit = totalCreditBalance(m);
-
-      await sql`
-        INSERT INTO musco_store (id, data)
-        VALUES ('main', ${JSON.stringify(data)}::jsonb)
-        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
-      `;
+      await save(sql, data);
 
       return json(res, 200, {
         ...c,
@@ -478,4 +518,6 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error("Members API error:", e);
     return json(res, 500, { error: e?.message || "Database error" });
-    }
+  }
+}
+    
