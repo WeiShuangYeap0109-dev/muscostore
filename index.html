@@ -105,7 +105,15 @@
   min-height:40px;
 }
 .invoice-total-box{background:#ddd;font-size:13px}
-.invoice-payment-box{display:flex;gap:8px;align-items:flex-start}
+.invoice-payment-box{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  align-items:flex-start;
+  line-height:1.25;
+  min-height:72px;
+  box-sizing:border-box;
+}
 .invoice-warning{
   display:inline-block;
   background:#111;
@@ -330,11 +338,11 @@ const escapeXml=(v='')=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
     }
     svg+=`<rect x="552" y="535" width="232" height="40" fill="#ddd" stroke="#222" stroke-width="1.5"/>
       <text x="562" y="560" class="b s13">Total Amount: RM${Number(o.totalAmount||0).toFixed(2)}</text>
-      <rect x="552" y="590" width="232" height="72" fill="#fff" stroke="#222" stroke-width="1.5"/>
+      <rect x="552" y="590" width="232" height="${o.paymentMethod==='Member Credit'?88:72}" fill="#fff" stroke="#222" stroke-width="1.5"/>
       <text x="562" y="611" class="b s12">Payment</text>
       <text x="562" y="627" class="s12">Method: ${escapeXml(o.paymentMethod||'-')}</text>
-      ${o.paymentMethod==='Member Credit'?`<text x="562" y="643" class="s12">Credit Used: RM${Number(o.creditUsed||0).toFixed(2)}</text>
-      <text x="562" y="657" class="b s12">Credit Balance: RM${Number(o.creditBalanceAfter??0).toFixed(2)}</text>`:''}
+      ${o.paymentMethod==='Member Credit'?`<text x="562" y="643" class="s12">Credit Used: RM${Number(o.creditUsed ?? o.totalAmount ?? 0).toFixed(2)}</text>
+      <text x="562" y="659" class="b s12">Credit Balance: RM${Number(o.creditBalanceAfter ?? data.members.find(m=>m.id===o.memberId)?.credit ?? 0).toFixed(2)}</text>`:''}
       <rect x="76" y="680" width="478" height="20" fill="#111"/>
       <text x="78" y="695" fill="#fff" class="b s13" style="fill:#fff">GOODS SOLD ARE NEITHER RETURNABLE NOR REFUNDABLE</text>
       <text x="76" y="735" class="b s12">REMARKS: ${escapeXml(o.remarks||'')}</text>
@@ -450,7 +458,14 @@ const escapeXml=(v='')=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 
             <div className="invoice-total-wrap">
               <div className="invoice-total-box"><b>Total Amount:</b> RM{Number(invoiceOrder.totalAmount||0).toFixed(2)}</div>
-              <div className="invoice-payment-box"><b>Payment<br/>Method:</b> {invoiceOrder.paymentMethod||'-'}</div>
+              <div className="invoice-payment-box">
+                <div><b>Payment</b></div>
+                <div><b>Method:</b> {invoiceOrder.paymentMethod||'-'}</div>
+                {invoiceOrder.paymentMethod==='Member Credit' && <>
+                  <div>Credit Used: RM{Number(invoiceOrder.creditUsed ?? invoiceOrder.totalAmount ?? 0).toFixed(2)}</div>
+                  <div><b>Credit Balance: RM{Number(invoiceOrder.creditBalanceAfter ?? data.members.find(m=>m.id===invoiceOrder.memberId)?.credit ?? 0).toFixed(2)}</b></div>
+                </>}
+              </div>
             </div>
 
             <div className="invoice-warning">GOODS SOLD ARE NEITHER RETURNABLE NOR REFUNDABLE</div>
