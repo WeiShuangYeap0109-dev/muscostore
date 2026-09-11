@@ -330,12 +330,14 @@ const escapeXml=(v='')=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
     }
     svg+=`<rect x="552" y="535" width="232" height="40" fill="#ddd" stroke="#222" stroke-width="1.5"/>
       <text x="562" y="560" class="b s13">Total Amount: RM${Number(o.totalAmount||0).toFixed(2)}</text>
-      <rect x="552" y="590" width="232" height="55" fill="#fff" stroke="#222" stroke-width="1.5"/>
-      <text x="562" y="612" class="b s12">Payment</text>
-      <text x="562" y="628" class="b s12">Method: <tspan font-weight="400">${escapeXml(o.paymentMethod||'-')}</tspan></text>
-      <rect x="76" y="668" width="478" height="20" fill="#111"/>
-      <text x="78" y="683" fill="#fff" class="b s13" style="fill:#fff">GOODS SOLD ARE NEITHER RETURNABLE NOR REFUNDABLE</text>
-      <text x="76" y="723" class="b s12">REMARKS: ${escapeXml(o.remarks||'')}</text>
+      <rect x="552" y="590" width="232" height="72" fill="#fff" stroke="#222" stroke-width="1.5"/>
+      <text x="562" y="611" class="b s12">Payment</text>
+      <text x="562" y="627" class="s12">Method: ${escapeXml(o.paymentMethod||'-')}</text>
+      ${o.paymentMethod==='Member Credit'?`<text x="562" y="643" class="s12">Credit Used: RM${Number(o.creditUsed||0).toFixed(2)}</text>
+      <text x="562" y="657" class="b s12">Credit Balance: RM${Number(o.creditBalanceAfter??0).toFixed(2)}</text>`:''}
+      <rect x="76" y="680" width="478" height="20" fill="#111"/>
+      <text x="78" y="695" fill="#fff" class="b s13" style="fill:#fff">GOODS SOLD ARE NEITHER RETURNABLE NOR REFUNDABLE</text>
+      <text x="76" y="735" class="b s12">REMARKS: ${escapeXml(o.remarks||'')}</text>
       <line x1="80" y1="935" x2="398" y2="935" stroke="#999" stroke-width="1"/>
       <line x1="464" y1="935" x2="782" y2="935" stroke="#999" stroke-width="1"/>
       <text x="239" y="955" text-anchor="middle" class="b s12">RECEIVED BY</text>
