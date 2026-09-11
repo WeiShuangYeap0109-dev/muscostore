@@ -224,56 +224,134 @@ function App(){
   const waInvoice=(o)=>{const txt=`MUS & CO. BEAUTY SUPPLY\nBy Beyoutiful Studio\nNo28, 2ND Floor, Jalan Muthpalaniappan, Lintang Sunway Wellesley 3, 14000 Bukit Mertajam, Pulau Pinang\n+60173369588\n\nInvoice No.: ${o.invoiceNo}\nDate: ${o.invoiceDate}\nCustomer: ${o.memberName}\n\n${o.items.map(i=>`• ${i.productName} x${i.qty} = RM${i.total}`).join('\n')}\nSubtotal: RM${o.subtotal}\nCredit Before: RM${Number(o.creditBefore||0).toFixed(2)}\nCredit Used: RM${Number(o.creditUsed||0).toFixed(2)}\nCredit Balance After: RM${Number(o.creditBalanceAfter||0).toFixed(2)}\nTotal: RM${o.totalAmount}\nPayment: ${o.paymentMethod}`; return `https://wa.me/?text=${encodeURIComponent(txt)}`;};
   const waTrack=(o)=>`https://wa.me/?text=${encodeURIComponent(`Hi ${o.memberName}, 您的订单 ${o.invoiceNo} 已发货！Tracking: ${o.trackingNo}`)}`;
   const saveProduct=async()=>{const target=editingProduct||newProduct; if(!target.productId||!target.name){alert('请填写ID和名称'); return;} let nextProducts; if(editingProduct) nextProducts=data.products.map(p=>p.id===editingProduct.id?target:p); else {const np={...target,id:'p'+Date.now()}; nextProducts=[...data.products,np];} await save({...data,products:nextProducts}); setEditingProduct(null); setNewProduct({id:'',productId:'',name:'',photo:'',regularPrice:0,memberPrice:0,stock:0,description:'',visible:true});};
-const renderInvoiceCanvas=async(o=invoiceOrder)=>{
+const escapeXml=(v='')=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+  const wrapText=(value,maxChars)=>{
+    const s=String(value??'').trim();
+    if(!s)return [''];
+    const out=[]; let line='';
+    for(const ch of s){
+      if((line+ch).length>maxChars && line){out.push(line);line=ch;}else line+=ch;
+    }
+    if(line)out.push(line);
+    return out.slice(0,3);
+  };
+  const logoDataUrl=async()=>{
+    try{
+      const r=await fetch('/logo.png',{cache:'no-store'});
+      if(!r.ok)throw new Error('logo');
+      const b=await r.blob();
+      return await new Promise((resolve,reject)=>{
+        const fr=new FileReader();
+        fr.onload=()=>resolve(fr.result);
+        fr.onerror=reject;
+        fr.readAsDataURL(b);
+      });
+    }catch{return '';}
+  };
+  const invoiceSvg=async(o=invoiceOrder)=>{
     if(!o)throw new Error('Invoice not ready');
-    const area=document.getElementById('invoice-print-area');
-    if(!area)throw new Error('Invoice not ready');
-    const h2c=window.html2canvas;
-    if(typeof h2c!=='function')throw new Error('Invoice image library failed to load');
-    area.classList.add('invoice-capture');
-    try{
-      return await h2c(area,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,height:1123,windowWidth:794});
-    }finally{
-      area.classList.remove('invoice-capture');
-    }
-  };
-  const makeInvoicePDF=async(o=invoiceOrder)=>{
-    const canvas=await renderInvoiceCanvas(o);
-    const jsPDF=window.jspdf?.jsPDF;
-    if(!jsPDF)throw new Error('PDF library failed to load');
-    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
-    pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,210,297,undefined,'FAST');
-    return pdf;
-  };
-  const printInvoice=async()=>{
-    try{
-      const pdf=await makeInvoicePDF(invoiceOrder);
-      const blob=pdf.output('blob');
-      const url=URL.createObjectURL(blob);
-      const w=window.open(url,'_blank');
-      if(!w){
-        const a=document.createElement('a');a.href=url;a.download=`${invoiceOrder?.invoiceNo||'invoice'}.pdf`;a.click();
-        alert('PDF 已生成，请在浏览器打开后保存。');
-        return;
+    const W=794,H=1123;
+    const logo=await logoDataUrl();
+    const items=Array.isArray(o.items)?o.items:[];
+    const rows=[...items.slice(0,3)];
+    while(rows.length<3)rows.push(null);
+    const descLines=(v)=>wrapText(v,43);
+    let y=56;
+    let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+      <rect width="${W}" height="${H}" fill="#fff"/>
+      <style>
+        text{font-family:"Times New Roman",Times,serif;fill:#111}
+        .b{font-weight:700}.s12{font-size:12px}.s13{font-size:13px}.s17{font-size:17px}
+      </style>`;
+    if(logo)svg+=`<image href="${logo}" x="56" y="56" width="155" height="48" preserveAspectRatio="xMinYMin meet"/>`;
+    y=109;
+    svg+=`<text x="56" y="${y}" class="b s13">Mus&amp;Co. Beauty Supply(003534035-W)</text>
+      <text x="56" y="${y+17}" class="b s12">No28, 2ND Floor JALAN MUTHPALANIAPPAN, Lintang Sunway Wellesley 3,</text>
+      <text x="56" y="${y+34}" class="b s12">14000 Bukit Mertajam, Pulau Pinang</text>
+      <text x="56" y="${y+51}" class="b s12">+60173369588</text>
+      <line x1="56" y1="175" x2="738" y2="175" stroke="#999" stroke-width="1.5"/>`;
+    const leftX=74,rightX=474,boxW=264;
+    svg+=`<text x="${leftX}" y="214" class="b s17">BILL TO</text>
+      <text x="${leftX}" y="235" class="s12">NAME: ${escapeXml(o.memberName||'-')}</text>`;
+    const addr=wrapText(o.address||'-',50);
+    svg+=`<text x="${leftX}" y="271" class="s12">ADDRESS: ${escapeXml(addr[0])}</text>`;
+    for(let i=1;i<addr.length;i++)svg+=`<text x="${leftX}" y="${271+i*16}" class="s12">${escapeXml(addr[i])}</text>`;
+    const contactY=addr.length>1?319:303;
+    svg+=`<text x="${leftX}" y="${contactY}" class="s12">CONTACT: ${escapeXml(o.contact||'-')}</text>
+      <rect x="${rightX}" y="195" width="${boxW}" height="120" fill="#fff" stroke="#222" stroke-width="2"/>
+      <text x="${rightX+boxW/2}" y="218" text-anchor="middle" class="b s17">INVOICE</text>
+      <line x1="${rightX}" y1="235" x2="${rightX+boxW}" y2="235" stroke="#222"/>
+      <line x1="${rightX}" y1="275" x2="${rightX+boxW}" y2="275" stroke="#222"/>
+      <text x="${rightX+10}" y="259" class="s12">INVOICE NO: ${escapeXml(o.invoiceNo||'-')}</text>
+      <text x="${rightX+10}" y="299" class="s12">DATE: ${escapeXml(o.invoiceDate||o.date||'-')}</text>
+      <text x="${rightX+10}" y="340" class="s12">SALES PERSON: ${escapeXml(o.salesPerson||data.settings.salesPerson||'-')}</text>`;
+    const tableX=76,tableY=366,tableW=682,rowH=42;
+    const cols=[105,116,244,70,73,74];
+    const headers=['序號','Product ID','Item Description','Qty','Price','Total Price'];
+    let x=tableX;
+    for(let i=0;i<cols.length;i++){svg+=`<rect x="${x}" y="${tableY}" width="${cols[i]}" height="${rowH}" fill="#ddd" stroke="#222" stroke-width="1.5"/>
+      <text x="${x+8}" y="${tableY+27}" class="b s12">${headers[i]}</text>`;x+=cols[i];}
+    for(let r=0;r<3;r++){
+      const yy=tableY+rowH+r*42; x=tableX;
+      for(let c=0;c<cols.length;c++){svg+=`<rect x="${x}" y="${yy}" width="${cols[c]}" height="42" fill="#fff" stroke="#222" stroke-width="1.5"/>`;x+=cols[c];}
+      const it=rows[r];
+      if(it){
+        const lines=descLines(it.productName||'-');
+        svg+=`<text x="${tableX+8}" y="${yy+25}" class="s12">${r+1}</text>
+          <text x="${tableX+113}" y="${yy+25}" class="s12">${escapeXml(it.pid||it.productId||'-')}</text>`;
+        for(let k=0;k<Math.min(2,lines.length);k++)svg+=`<text x="${tableX+229}" y="${yy+18+k*16}" class="s12">${escapeXml(lines[k])}</text>`;
+        svg+=`<text x="${tableX+454}" y="${yy+25}" text-anchor="middle" class="s12">${escapeXml(it.qty||0)}</text>
+          <text x="${tableX+522}" y="${yy+25}" class="s12">RM${Number(it.price||0).toFixed(2)}</text>
+          <text x="${tableX+592}" y="${yy+25}" class="s12">RM${Number(it.total||0).toFixed(2)}</text>`;
       }
-    }catch(err){
-      console.error(err);
-      alert('生成 Invoice PDF 失败：'+(err.message||err));
     }
+    svg+=`<rect x="552" y="535" width="232" height="40" fill="#ddd" stroke="#222" stroke-width="1.5"/>
+      <text x="562" y="560" class="b s13">Total Amount: RM${Number(o.totalAmount||0).toFixed(2)}</text>
+      <rect x="552" y="590" width="232" height="55" fill="#fff" stroke="#222" stroke-width="1.5"/>
+      <text x="562" y="612" class="b s12">Payment</text>
+      <text x="562" y="628" class="b s12">Method: <tspan font-weight="400">${escapeXml(o.paymentMethod||'-')}</tspan></text>
+      <rect x="76" y="668" width="478" height="20" fill="#111"/>
+      <text x="78" y="683" fill="#fff" class="b s13" style="fill:#fff">GOODS SOLD ARE NEITHER RETURNABLE NOR REFUNDABLE</text>
+      <text x="76" y="723" class="b s12">REMARKS: ${escapeXml(o.remarks||'')}</text>
+      <line x1="80" y1="935" x2="398" y2="935" stroke="#999" stroke-width="1"/>
+      <line x1="464" y1="935" x2="782" y2="935" stroke="#999" stroke-width="1"/>
+      <text x="239" y="955" text-anchor="middle" class="b s12">RECEIVED BY</text>
+      <text x="623" y="955" text-anchor="middle" class="b s12">ISSUED BY</text>
+      </svg>`;
+    return svg;
+  };
+  const renderInvoiceCanvas=async(o=invoiceOrder)=>{
+    const svg=await invoiceSvg(o);
+    const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    try{
+      const img=new Image();
+      await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url;});
+      const canvas=document.createElement('canvas');canvas.width=1588;canvas.height=2246;
+      const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      return canvas;
+    }finally{URL.revokeObjectURL(url);}
+  };
+  const printInvoice=()=>{
+    try{
+      if(!document.getElementById('invoice-print-area'))throw new Error('Invoice not ready');
+      window.print();
+    }catch(err){console.error(err);alert('生成 Invoice PDF 失败：'+(err.message||err));}
   };
   const shareInvoiceImage=async(o=invoiceOrder)=>{
     try{
       const canvas=await renderInvoiceCanvas(o);
-      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.95));
+      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
       if(!blob)throw new Error('Unable to create invoice image');
-      const file=new File([blob],`${o?.invoiceNo||'invoice'}.jpg`,{type:'image/jpeg'});
+      const file=new File([blob],`${o?.invoiceNo||'invoice'}.png`,{type:'image/png'});
       if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
         await navigator.share({files:[file],title:`Invoice ${o?.invoiceNo||''}`,text:`Mus & Co. Invoice ${o?.invoiceNo||''}`});
         return;
       }
       const url=URL.createObjectURL(blob);
       const w=window.open(url,'_blank');
-      if(!w){window.location.href=url;}
+      if(!w){window.location.href=url;return;}
       alert('Invoice 图片已生成。请长按图片保存，再发送到 WhatsApp。');
     }catch(err){
       if(err?.name==='AbortError')return;
