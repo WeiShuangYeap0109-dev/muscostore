@@ -3,7 +3,7 @@
     "api/store.js": {
       "includeFiles": "api/**"
     },
-    "api/member.js": {
+    "api/members.js": {
       "includeFiles": "api/**"
     },
     "api/admin.js": {
