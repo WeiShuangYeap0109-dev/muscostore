@@ -39,6 +39,10 @@ export default async function handler(req, res) {
     data.orders = Array.isArray(data.orders) ? data.orders : [];
     data.settings = data.settings || {};
 
+    /* =========================
+       GET MEMBERS
+    ========================= */
+
     if (req.method === 'GET') {
       const members = data.members.map(safeMember);
 
@@ -77,6 +81,52 @@ export default async function handler(req, res) {
         ? JSON.parse(req.body || '{}')
         : (req.body || {});
 
+    /* =========================
+       LOGIN
+       ========================= */
+
+    if (body.action === 'login') {
+      const phone = String(body.phone || '').trim();
+      const password = String(body.password || '');
+
+      if (!phone || !password) {
+        return json(res, 400, {
+          error: 'Phone and password are required.'
+        });
+      }
+
+      const normalizedPhone = phone.replace(/\s/g, '');
+
+      const member = data.members.find(
+        x =>
+          String(x.phone || '').replace(/\s/g, '') ===
+          normalizedPhone
+      );
+
+      if (!member) {
+        return json(res, 404, {
+          error: '电话号码不存在，请先 Create Account'
+        });
+      }
+
+      if (String(member.password || '') !== password) {
+        return json(res, 401, {
+          error: 'Password 错误'
+        });
+      }
+
+      const credit = Number(member.credit || 0);
+
+      return json(res, 200, {
+        member: safeMember(member),
+        credit
+      });
+    }
+
+    /* =========================
+       CREATE / UPDATE MEMBER
+    ========================= */
+
     if (body.action === 'member') {
       const m = body.member || {};
 
@@ -95,7 +145,8 @@ export default async function handler(req, res) {
       const duplicate = data.members.find(
         x =>
           x.id !== id &&
-          String(x.phone || '').replace(/\s/g, '') === normalizedPhone
+          String(x.phone || '').replace(/\s/g, '') ===
+            normalizedPhone
       );
 
       if (duplicate) {
@@ -146,6 +197,10 @@ export default async function handler(req, res) {
 
       return json(res, 200, safeMember(member));
     }
+
+    /* =========================
+       CREDIT
+    ========================= */
 
     if (body.action === 'credit') {
       const c = body.credit || {};
