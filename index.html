@@ -255,7 +255,7 @@ const escapeXml=(v='')=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
     const items=Array.isArray(o.items)?o.items:[];
     const rows=[...items.slice(0,3)];
     while(rows.length<3)rows.push(null);
-    const descLines=(v)=>wrapText(v,43);
+    const descLines=(v)=>wrapText(v,30);
     let y=56;
     let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
       <rect width="${W}" height="${H}" fill="#fff"/>
@@ -289,20 +289,30 @@ const escapeXml=(v='')=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
     const cols=[105,116,244,70,73,74];
     const headers=['序號','Product ID','Item Description','Qty','Price','Total Price'];
     let x=tableX;
-    for(let i=0;i<cols.length;i++){svg+=`<rect x="${x}" y="${tableY}" width="${cols[i]}" height="${rowH}" fill="#ddd" stroke="#222" stroke-width="1.5"/>
-      <text x="${x+8}" y="${tableY+27}" class="b s12">${headers[i]}</text>`;x+=cols[i];}
+    for(let i=0;i<cols.length;i++){
+      const cx=x+cols[i]/2;
+      svg+=`<rect x="${x}" y="${tableY}" width="${cols[i]}" height="${rowH}" fill="#ddd" stroke="#222" stroke-width="1.5"/>
+        <text x="${cx}" y="${tableY+27}" text-anchor="middle" class="b s12">${headers[i]}</text>`;
+      x+=cols[i];
+    }
     for(let r=0;r<3;r++){
       const yy=tableY+rowH+r*42; x=tableX;
       for(let c=0;c<cols.length;c++){svg+=`<rect x="${x}" y="${yy}" width="${cols[c]}" height="42" fill="#fff" stroke="#222" stroke-width="1.5"/>`;x+=cols[c];}
       const it=rows[r];
       if(it){
         const lines=descLines(it.productName||'-');
-        svg+=`<text x="${tableX+8}" y="${yy+25}" class="s12">${r+1}</text>
-          <text x="${tableX+113}" y="${yy+25}" class="s12">${escapeXml(it.pid||it.productId||'-')}</text>`;
-        for(let k=0;k<Math.min(2,lines.length);k++)svg+=`<text x="${tableX+229}" y="${yy+18+k*16}" class="s12">${escapeXml(lines[k])}</text>`;
-        svg+=`<text x="${tableX+454}" y="${yy+25}" text-anchor="middle" class="s12">${escapeXml(it.qty||0)}</text>
-          <text x="${tableX+522}" y="${yy+25}" class="s12">RM${Number(it.price||0).toFixed(2)}</text>
-          <text x="${tableX+592}" y="${yy+25}" class="s12">RM${Number(it.total||0).toFixed(2)}</text>`;
+        const c1=tableX+cols[0]/2;
+        const c2=tableX+cols[0]+cols[1]/2;
+        const descX=tableX+cols[0]+cols[1]+8;
+        const c4=tableX+cols[0]+cols[1]+cols[2]+cols[3]/2;
+        const c5=tableX+cols[0]+cols[1]+cols[2]+cols[3]+cols[4]/2;
+        const c6=tableX+cols[0]+cols[1]+cols[2]+cols[3]+cols[4]+cols[5]/2;
+        svg+=`<text x="${c1}" y="${yy+26}" text-anchor="middle" class="s12">${r+1}</text>
+          <text x="${c2}" y="${yy+26}" text-anchor="middle" class="s12">${escapeXml(it.pid||it.productId||'-')}</text>`;
+        for(let k=0;k<Math.min(2,lines.length);k++)svg+=`<text x="${descX}" y="${yy+17+k*15}" class="s12">${escapeXml(lines[k])}</text>`;
+        svg+=`<text x="${c4}" y="${yy+26}" text-anchor="middle" class="s12">${escapeXml(it.qty||0)}</text>
+          <text x="${c5}" y="${yy+26}" text-anchor="middle" class="s12">RM${Number(it.price||0).toFixed(2)}</text>
+          <text x="${c6}" y="${yy+26}" text-anchor="middle" class="s12">RM${Number(it.total||0).toFixed(2)}</text>`;
       }
     }
     svg+=`<rect x="552" y="535" width="232" height="40" fill="#ddd" stroke="#222" stroke-width="1.5"/>
