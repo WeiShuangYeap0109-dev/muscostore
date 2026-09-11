@@ -225,14 +225,25 @@ function App(){
   const waTrack=(o)=>`https://wa.me/?text=${encodeURIComponent(`Hi ${o.memberName}, 您的订单 ${o.invoiceNo} 已发货！Tracking: ${o.trackingNo}`)}`;
   const saveProduct=async()=>{const target=editingProduct||newProduct; if(!target.productId||!target.name){alert('请填写ID和名称'); return;} let nextProducts; if(editingProduct) nextProducts=data.products.map(p=>p.id===editingProduct.id?target:p); else {const np={...target,id:'p'+Date.now()}; nextProducts=[...data.products,np];} await save({...data,products:nextProducts}); setEditingProduct(null); setNewProduct({id:'',productId:'',name:'',photo:'',regularPrice:0,memberPrice:0,stock:0,description:'',visible:true});};
 const escapeXml=(v='')=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
-  const wrapText=(value,maxChars)=>{
+  const wrapText=(value,maxWidth,font='12px Times New Roman')=>{
     const s=String(value??'').trim();
     if(!s)return [''];
-    const out=[]; let line='';
+    const canvas=document.createElement('canvas');
+    const ctx=canvas.getContext('2d');
+    ctx.font=font;
+    const out=[];
+    let line='';
+    const push=()=>{if(line){out.push(line);line='';}};
     for(const ch of s){
-      if((line+ch).length>maxChars && line){out.push(line);line=ch;}else line+=ch;
+      const test=line+ch;
+      if(line && ctx.measureText(test).width>maxWidth){
+        push();
+        line=ch;
+      }else{
+        line=test;
+      }
     }
-    if(line)out.push(line);
+    push();
     return out.slice(0,3);
   };
   const logoDataUrl=async()=>{
@@ -255,7 +266,7 @@ const escapeXml=(v='')=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
     const items=Array.isArray(o.items)?o.items:[];
     const rows=[...items.slice(0,3)];
     while(rows.length<3)rows.push(null);
-    const descLines=(v)=>wrapText(v,30);
+    const descLines=(v)=>wrapText(v,190,'11px Times New Roman');
     let y=56;
     let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
       <rect width="${W}" height="${H}" fill="#fff"/>
@@ -273,7 +284,7 @@ const escapeXml=(v='')=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
     const leftX=74,rightX=474,boxW=264;
     svg+=`<text x="${leftX}" y="214" class="b s17">BILL TO</text>
       <text x="${leftX}" y="235" class="s12">NAME: ${escapeXml(o.memberName||'-')}</text>`;
-    const addr=wrapText(o.address||'-',50);
+    const addr=wrapText(o.address||'-',330,'12px Times New Roman');
     svg+=`<text x="${leftX}" y="271" class="s12">ADDRESS: ${escapeXml(addr[0])}</text>`;
     for(let i=1;i<addr.length;i++)svg+=`<text x="${leftX}" y="${271+i*16}" class="s12">${escapeXml(addr[i])}</text>`;
     const contactY=addr.length>1?319:303;
@@ -309,7 +320,9 @@ const escapeXml=(v='')=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
         const c6=tableX+cols[0]+cols[1]+cols[2]+cols[3]+cols[4]+cols[5]/2;
         svg+=`<text x="${c1}" y="${yy+26}" text-anchor="middle" class="s12">${r+1}</text>
           <text x="${c2}" y="${yy+26}" text-anchor="middle" class="s12">${escapeXml(it.pid||it.productId||'-')}</text>`;
-        for(let k=0;k<Math.min(2,lines.length);k++)svg+=`<text x="${descX}" y="${yy+17+k*15}" class="s12">${escapeXml(lines[k])}</text>`;
+        const shownLines=lines.slice(0,2);
+        const startY=shownLines.length===1?yy+26:yy+18;
+        for(let k=0;k<shownLines.length;k++)svg+=`<text x="${descX}" y="${startY+k*15}" style="font-size:11px">${escapeXml(shownLines[k])}</text>`;
         svg+=`<text x="${c4}" y="${yy+26}" text-anchor="middle" class="s12">${escapeXml(it.qty||0)}</text>
           <text x="${c5}" y="${yy+26}" text-anchor="middle" class="s12">RM${Number(it.price||0).toFixed(2)}</text>
           <text x="${c6}" y="${yy+26}" text-anchor="middle" class="s12">RM${Number(it.total||0).toFixed(2)}</text>`;
