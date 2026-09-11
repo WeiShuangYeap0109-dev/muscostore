@@ -27,16 +27,13 @@ export default async function handler(req, res) {
 
     const sql = neon(process.env.DATABASE_URL);
 
-    // Make sure the cloud store exists.
     await sql`
       CREATE TABLE IF NOT EXISTS musco_store (
         id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        data JSONB NOT NULL
       )
     `;
 
-    // Create the main record if it does not exist.
     await sql`
       INSERT INTO musco_store (id, data)
       VALUES (
@@ -45,15 +42,12 @@ export default async function handler(req, res) {
           products: [],
           members: [],
           orders: [],
-          settings: []
+          settings: {}
         })}::jsonb
       )
       ON CONFLICT (id) DO NOTHING
     `;
 
-    // =========================
-    // GET
-    // =========================
     if (req.method === 'GET') {
       const rows = await sql`
         SELECT data
@@ -66,7 +60,7 @@ export default async function handler(req, res) {
         products: [],
         members: [],
         orders: [],
-        settings: []
+        settings: {}
       };
 
       return json(res, 200, {
@@ -74,11 +68,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // =========================
-    // POST / SAVE
-    // =========================
     if (req.method === 'POST') {
-
       let body = req.body || {};
 
       if (typeof body === 'string') {
@@ -99,7 +89,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Make sure all main collections exist.
       incoming.products = Array.isArray(incoming.products)
         ? incoming.products
         : [];
@@ -118,38 +107,27 @@ export default async function handler(req, res) {
           ? incoming.settings
           : {};
 
-      // IMPORTANT:
-      // Keep passwords in the cloud database.
-      // They are only removed from GET responses.
       await sql`
         INSERT INTO musco_store (
           id,
-          data,
-          updated_at
+          data
         )
         VALUES (
           'main',
-          ${JSON.stringify(incoming)}::jsonb,
-          NOW()
+          ${JSON.stringify(incoming)}::jsonb
         )
         ON CONFLICT (id)
         DO UPDATE SET
-          data = EXCLUDED.data,
-          updated_at = NOW()
+          data = EXCLUDED.data
       `;
 
       return json(res, 200, {
         ok: true,
-        saved: true,
-        updatedAt: new Date().toISOString()
+        saved: true
       });
     }
 
-    // =========================
-    // DELETE
-    // =========================
     if (req.method === 'DELETE') {
-
       const emptyData = {
         products: [],
         members: [],
@@ -159,9 +137,7 @@ export default async function handler(req, res) {
 
       await sql`
         UPDATE musco_store
-        SET
-          data = ${JSON.stringify(emptyData)}::jsonb,
-          updated_at = NOW()
+        SET data = ${JSON.stringify(emptyData)}::jsonb
         WHERE id = 'main'
       `;
 
@@ -180,7 +156,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-
     console.error(
       'MUSCO STORE API ERROR:',
       error
