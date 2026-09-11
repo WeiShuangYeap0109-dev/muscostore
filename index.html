@@ -28,13 +28,32 @@
 </style>
 
 <style id="invoice-template-style">
-.invoice-sheet{width:210mm;min-height:297mm;margin:0 auto;padding:15mm 14mm;background:#fff;color:#111;font-family:"Times New Roman",Times,serif;font-size:12px;line-height:1.22;box-sizing:border-box;overflow:hidden}
+.invoice-sheet{
+  width:794px;
+  height:1123px;
+  min-height:1123px;
+  margin:0 auto;
+  padding:56px 56px 48px;
+  background:#fff;
+  color:#111;
+  font-family:"Times New Roman",Times,serif;
+  font-size:12px;
+  line-height:1.18;
+  box-sizing:border-box;
+  overflow:hidden;
+}
 .invoice-company{font-weight:700;font-size:12px;line-height:1.18}
-.invoice-logo-row{height:48px;margin-bottom:4px;display:flex;align-items:flex-start}
+.invoice-logo-row{height:48px;margin-bottom:5px;display:flex;align-items:flex-start}
 .invoice-logo{width:155px;height:48px;object-fit:contain;object-position:left center}
 .invoice-company-name{font-size:13px;margin-bottom:2px}
 .invoice-rule{height:1.5px;background:#999;margin:14px 0 14px}
-.invoice-head-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start;margin:0 8px 24px}
+.invoice-head-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:42px;
+  align-items:start;
+  margin:0 18px 24px;
+}
 .invoice-section-title,.invoice-box-title{font-size:17px;font-weight:700}
 .bill-to{padding-top:1px}
 .bill-to>div{margin-bottom:6px}
@@ -47,24 +66,68 @@
 .invoice-date-edit{display:flex;gap:4px;align-items:center}
 .invoice-date-edit input{font-size:10px;width:115px;height:24px;border:1px solid #999;padding:2px 4px}
 .invoice-date-edit button{font-size:9px;background:#111;color:#fff;border:0;padding:5px 7px}
-.invoice-items-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px}
-.invoice-items-table th,.invoice-items-table td{border:1.5px solid #222;padding:8px 8px;height:34px;vertical-align:middle}
-.invoice-items-table th{background:#ddd;text-align:left;font-weight:700;font-size:12px}
+.invoice-items-table{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+  font-size:11px;
+}
+.invoice-items-table th,.invoice-items-table td{
+  border:1.5px solid #222;
+  padding:7px 8px;
+  height:35px;
+  vertical-align:middle;
+}
+.invoice-items-table th{
+  background:#ddd;
+  text-align:left;
+  font-weight:700;
+  font-size:12px;
+}
 .invoice-items-table th:nth-child(1),.invoice-items-table td:nth-child(1){width:13%}
 .invoice-items-table th:nth-child(2),.invoice-items-table td:nth-child(2){width:15%}
 .invoice-items-table th:nth-child(3),.invoice-items-table td:nth-child(3){width:34%}
 .invoice-items-table th:nth-child(4),.invoice-items-table td:nth-child(4){width:10%;text-align:center}
 .invoice-items-table th:nth-child(5),.invoice-items-table td:nth-child(5){width:13%}
 .invoice-items-table th:nth-child(6),.invoice-items-table td:nth-child(6){width:15%}
-.invoice-total-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:12px;margin-top:14px}
-.invoice-total-box,.invoice-payment-box{width:232px;border:1.5px solid #222;padding:9px 10px;font-size:12px;min-height:40px}
+.invoice-total-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:12px;
+  margin-top:14px;
+}
+.invoice-total-box,.invoice-payment-box{
+  width:232px;
+  border:1.5px solid #222;
+  padding:9px 10px;
+  font-size:12px;
+  min-height:40px;
+}
 .invoice-total-box{background:#ddd;font-size:13px}
 .invoice-payment-box{display:flex;gap:8px;align-items:flex-start}
-.invoice-warning{display:inline-block;background:#111;color:#fff;font-weight:700;font-size:13px;padding:2px 3px;margin-top:20px}
+.invoice-warning{
+  display:inline-block;
+  background:#111;
+  color:#fff;
+  font-weight:700;
+  font-size:13px;
+  padding:2px 3px;
+  margin-top:20px;
+}
 .invoice-remarks{font-size:12px;margin-top:22px;min-height:35px}
-.invoice-signatures{display:grid;grid-template-columns:1fr 1fr;gap:54px;margin:94px 8px 0;text-align:center;font-size:12px}
+.invoice-signatures{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:54px;
+  margin:94px 8px 0;
+  text-align:center;
+  font-size:12px;
+}
 .signature-line{height:1px;background:#999;margin-bottom:8px}
-@media(max-width:700px){.invoice-sheet{margin:0;width:210mm;min-width:210mm}.invoice-head-grid{gap:20px}.invoice-signatures{margin-top:70px}}
+@media(max-width:700px){
+  .invoice-sheet{margin:0;width:794px;min-width:794px}
+}
 </style>
 
 <style id="print-style">
@@ -161,42 +224,51 @@ function App(){
   const waInvoice=(o)=>{const txt=`MUS & CO. BEAUTY SUPPLY\nBy Beyoutiful Studio\nNo28, 2ND Floor, Jalan Muthpalaniappan, Lintang Sunway Wellesley 3, 14000 Bukit Mertajam, Pulau Pinang\n+60173369588\n\nInvoice No.: ${o.invoiceNo}\nDate: ${o.invoiceDate}\nCustomer: ${o.memberName}\n\n${o.items.map(i=>`• ${i.productName} x${i.qty} = RM${i.total}`).join('\n')}\nSubtotal: RM${o.subtotal}\nCredit Before: RM${Number(o.creditBefore||0).toFixed(2)}\nCredit Used: RM${Number(o.creditUsed||0).toFixed(2)}\nCredit Balance After: RM${Number(o.creditBalanceAfter||0).toFixed(2)}\nTotal: RM${o.totalAmount}\nPayment: ${o.paymentMethod}`; return `https://wa.me/?text=${encodeURIComponent(txt)}`;};
   const waTrack=(o)=>`https://wa.me/?text=${encodeURIComponent(`Hi ${o.memberName}, 您的订单 ${o.invoiceNo} 已发货！Tracking: ${o.trackingNo}`)}`;
   const saveProduct=async()=>{const target=editingProduct||newProduct; if(!target.productId||!target.name){alert('请填写ID和名称'); return;} let nextProducts; if(editingProduct) nextProducts=data.products.map(p=>p.id===editingProduct.id?target:p); else {const np={...target,id:'p'+Date.now()}; nextProducts=[...data.products,np];} await save({...data,products:nextProducts}); setEditingProduct(null); setNewProduct({id:'',productId:'',name:'',photo:'',regularPrice:0,memberPrice:0,stock:0,description:'',visible:true});};
-  const printInvoice=()=>{
+const renderInvoiceCanvas=async(o=invoiceOrder)=>{
+    if(!o)throw new Error('Invoice not ready');
     const area=document.getElementById('invoice-print-area');
-    if(!area){alert('Invoice not ready');return;}
-    const clone=area.cloneNode(true);
-    clone.querySelectorAll('button,input,.no-print').forEach(el=>el.remove());
-    const w=window.open('','_blank','width=900,height=1200');
-    if(!w){alert('请允许 Safari 开启新窗口后再打印 PDF');return;}
-    w.document.open();
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${invoiceOrder.invoiceNo}</title>
-    <style>
-      @page{size:A4 portrait;margin:0}
-      *{box-sizing:border-box}
-      html,body{margin:0!important;padding:0!important;background:#fff;color:#111}
-      body{font-family:"Times New Roman",Times,serif}
-      .invoice-sheet{width:210mm!important;height:297mm!important;min-height:297mm!important;margin:0!important;padding:15mm 14mm!important;background:#fff!important;box-shadow:none!important;border:0!important;border-radius:0!important;overflow:hidden!important}
-      table{width:100%;border-collapse:collapse}
-      th,td{border:1px solid #222!important}
-      img{max-width:100%;height:auto}
-      .no-print{display:none!important}
-    </style></head><body>${clone.outerHTML}
-    <script>window.onload=()=>{setTimeout(()=>window.print(),300)}<\/script></body></html>`);
-    w.document.close();
+    if(!area)throw new Error('Invoice not ready');
+    const h2c=window.html2canvas;
+    if(typeof h2c!=='function')throw new Error('Invoice image library failed to load');
+    area.classList.add('invoice-capture');
+    try{
+      return await h2c(area,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,height:1123,windowWidth:794});
+    }finally{
+      area.classList.remove('invoice-capture');
+    }
+  };
+  const makeInvoicePDF=async(o=invoiceOrder)=>{
+    const canvas=await renderInvoiceCanvas(o);
+    const jsPDF=window.jspdf?.jsPDF;
+    if(!jsPDF)throw new Error('PDF library failed to load');
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,210,297,undefined,'FAST');
+    return pdf;
+  };
+  const printInvoice=async()=>{
+    try{
+      const pdf=await makeInvoicePDF(invoiceOrder);
+      const blob=pdf.output('blob');
+      const url=URL.createObjectURL(blob);
+      const w=window.open(url,'_blank');
+      if(!w){
+        const a=document.createElement('a');a.href=url;a.download=`${invoiceOrder?.invoiceNo||'invoice'}.pdf`;a.click();
+        alert('PDF 已生成，请在浏览器打开后保存。');
+        return;
+      }
+    }catch(err){
+      console.error(err);
+      alert('生成 Invoice PDF 失败：'+(err.message||err));
+    }
   };
   const shareInvoiceImage=async(o=invoiceOrder)=>{
-    if(!o)return;
-    const area=document.getElementById('invoice-print-area');
-    if(!area){alert('Invoice not ready');return;}
     try{
-      area.classList.add('invoice-capture');
-      const canvas=await html2canvas(area,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
-      area.classList.remove('invoice-capture');
+      const canvas=await renderInvoiceCanvas(o);
       const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.95));
       if(!blob)throw new Error('Unable to create invoice image');
-      const file=new File([blob],`${o.invoiceNo||'invoice'}.jpg`,{type:'image/jpeg'});
+      const file=new File([blob],`${o?.invoiceNo||'invoice'}.jpg`,{type:'image/jpeg'});
       if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
-        await navigator.share({files:[file],title:`Invoice ${o.invoiceNo||''}`,text:`Mus & Co. Invoice ${o.invoiceNo||''}`});
+        await navigator.share({files:[file],title:`Invoice ${o?.invoiceNo||''}`,text:`Mus & Co. Invoice ${o?.invoiceNo||''}`});
         return;
       }
       const url=URL.createObjectURL(blob);
@@ -204,15 +276,10 @@ function App(){
       if(!w){window.location.href=url;}
       alert('Invoice 图片已生成。请长按图片保存，再发送到 WhatsApp。');
     }catch(err){
-      area.classList.remove('invoice-capture');
       if(err?.name==='AbortError')return;
       console.error(err);
       alert('生成 Invoice 图片失败：'+(err.message||err));
     }
-  };
-  const openAndShareInvoice=async(o)=>{
-    setInvoiceOrder(o);
-    setTimeout(()=>shareInvoiceImage(o),700);
   };
   return (
     <div className="min-h-screen bg-[#f5f0e8] text-[#1a1a1a]">
