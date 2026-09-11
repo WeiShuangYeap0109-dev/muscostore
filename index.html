@@ -274,11 +274,11 @@ function App(){
     const count=data.orders.filter(x=>(x.invoiceNo||'').includes(ymd)).length+1;
     const invoiceNo=o.invoiceNo||`INV-${ymd}-${String(count).padStart(3,'0')}`;
     if(isMemberCredit){
-      const creditResp=await fetch('/api/members',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'credit',credit:{memberId:o.memberId,amount:-creditUsed,type:'Purchase',date:new Date().toISOString(),note:'Used for '+invoiceNo,orderNo:o.orderNo,invoiceNo}})});
+      const creditResp=await fetch('/api/members',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'useCredit',memberId:o.memberId,amount:creditUsed,credit:{memberId:o.memberId,amount:creditUsed},invoiceNo,orderNo:o.orderNo})});
       const cj=await creditResp.json().catch(()=>({}));
       if(!creditResp.ok)throw new Error(cj.error||'Unable to record Member Credit payment');
-      creditAfter=Number(cj.balanceAfter??(creditBefore-creditUsed));
-      creditUsageLots=Array.isArray(cj.usedLots)?cj.usedLots:[];
+      creditAfter=Number(cj.credit??(creditBefore-creditUsed));
+      creditUsageLots=Array.isArray(cj.deductions)?cj.deductions:[];
       nextMembers=data.members.map(x=>x.id===o.memberId?{...x,...(cj.member||{}),credit:creditAfter}:x);
     }
     const nextProducts=data.products.map(p=>{const item=o.items.find(i=>i.productId===p.id); return item?{...p,stock:Math.max(0,Number(p.stock||0)-Number(item.qty||0))}:p;});
@@ -531,12 +531,13 @@ const escapeXml=(v='')=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 
             <div className="invoice-total-wrap">
               <div className="invoice-total-box"><b>Total Amount:</b> RM{Number(invoiceOrder.totalAmount||0).toFixed(2)}</div>
-              <div className="invoice-payment-box" style={{minHeight:String(invoiceOrder.paymentMethod||'').trim()==='Member Credit'?104:72}}>
+              <div className="invoice-payment-box" style={{minHeight:String(invoiceOrder.paymentMethod||'').trim()==='Member Credit'?128:72}}>
                 <div><b>Payment</b></div>
                 <div><b>Method:</b> {invoiceOrder.paymentMethod||'-'}</div>
                 {String(invoiceOrder.paymentMethod||'').trim()==='Member Credit' && <>
                   <div>Credit Used: RM{Number(invoiceOrder.creditUsed ?? invoiceOrder.totalAmount ?? 0).toFixed(2)}</div>
                   <div><b>Credit Balance: RM{Number(invoiceOrder.creditBalanceAfter ?? data.members.find(m=>m.id===invoiceOrder.memberId)?.credit ?? 0).toFixed(2)}</b></div>
+                  {Array.isArray(invoiceOrder.creditUsageLots)&&invoiceOrder.creditUsageLots.length>0&&<div>Valid Until: {invoiceOrder.creditUsageLots.map(l=>l.expiry?formatDateText(l.expiry):'No Expiry').join(' / ')}</div>}
                 </>}
               </div>
             </div>{Array.isArray(invoiceOrder.creditPurchases)&&invoiceOrder.creditPurchases.length&&<div className="text-[11px] mt-2 font-semibold">Valid Until: {formatDateText(invoiceOrder.creditPurchases[0].expiry)}</div>}
